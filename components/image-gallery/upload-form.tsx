@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useRef, useState } from "react";
+import { UploadCloud } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,16 +41,14 @@ export function UploadForm({ isUploading, onUpload }: UploadFormProps) {
   }
 
   return (
-    <form
-      className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-start"
-      onSubmit={handleSubmit}
-    >
-      <div className="flex-1">
+    <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+      <div className="rounded-xl border border-dashed bg-muted/30 p-4">
         <Input
           ref={inputRef}
           type="file"
           accept="image/*"
           disabled={isUploading}
+          className="h-11 bg-background"
           onChange={(event) => {
             const file = event.target.files?.[0] ?? null;
             setSelectedFile(file);
@@ -70,8 +69,13 @@ export function UploadForm({ isUploading, onUpload }: UploadFormProps) {
           </p>
         )}
       </div>
-      <Button type="submit" disabled={isUploading || !selectedFile}>
-        {isUploading ? "Uploading…" : "Upload image"}
+      <Button
+        type="submit"
+        className="w-full sm:w-fit"
+        disabled={isUploading || !selectedFile}
+      >
+        <UploadCloud />
+        {isUploading ? "Uploading…" : "Upload selected image"}
       </Button>
     </form>
   );

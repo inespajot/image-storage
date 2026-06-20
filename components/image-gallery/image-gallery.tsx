@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
+import { AlertCircle, CheckCircle2, LockKeyhole, UploadCloud } from "lucide-react";
 
 import { ImageGrid } from "@/components/image-gallery/image-grid";
 import type {
@@ -10,6 +11,13 @@ import type {
   ImageRecord,
 } from "@/components/image-gallery/types";
 import { UploadForm } from "@/components/image-gallery/upload-form";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 
 const BUCKET_ID = "user-images";
@@ -51,6 +59,7 @@ export function ImageGallery() {
   const [isUploading, setIsUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const loadImages = useCallback(
     async (currentUser: User) => {
@@ -96,6 +105,7 @@ export function ImageGallery() {
     async function initializeGallery() {
       setIsLoading(true);
       setErrorMessage(null);
+      setSuccessMessage(null);
 
       const { data, error } = await supabase.auth.getUser();
 
@@ -147,6 +157,7 @@ export function ImageGallery() {
 
     setIsUploading(true);
     setErrorMessage(null);
+    setSuccessMessage(null);
 
     const storagePath = `${user.id}/${crypto.randomUUID()}.${extension}`;
 
@@ -177,6 +188,7 @@ export function ImageGallery() {
       }
 
       await loadImages(user);
+      setSuccessMessage(`${file.name} was uploaded successfully.`);
       return true;
     } catch (uploadError) {
       setErrorMessage(getErrorMessage(uploadError));
@@ -194,6 +206,7 @@ export function ImageGallery() {
 
     setDeletingId(image.id);
     setErrorMessage(null);
+    setSuccessMessage(null);
 
     try {
       const { error: storageError } = await supabase.storage
@@ -220,6 +233,7 @@ export function ImageGallery() {
       setImages((currentImages) =>
         currentImages.filter((currentImage) => currentImage.id !== image.id),
       );
+      setSuccessMessage(`${image.original_name} was deleted.`);
     } catch (deleteError) {
       setErrorMessage(getErrorMessage(deleteError));
     } finally {
@@ -228,27 +242,77 @@ export function ImageGallery() {
   }
 
   return (
-    <section className="flex w-full flex-1 flex-col gap-6">
-      <header>
-        <h1 className="text-3xl font-bold tracking-tight">Your images</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Images are private and only available to your account.
-        </p>
+    <section className="flex w-full flex-1 flex-col gap-8">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border bg-background px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm">
+            <LockKeyhole className="size-3.5" />
+            Private account storage
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            Your image vault
+          </h1>
+          <p className="mt-2 max-w-2xl text-muted-foreground">
+            Upload and manage images that are only accessible through your
+            signed-in account.
+          </p>
+        </div>
+        {!isLoading && (
+          <p className="text-sm text-muted-foreground">
+            {images.length} {images.length === 1 ? "image" : "images"}
+          </p>
+        )}
       </header>
 
-      <UploadForm isUploading={isUploading} onUpload={handleUpload} />
+      <Card className="border-0 shadow-sm ring-1 ring-border">
+        <CardHeader>
+          <div className="flex items-start gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <UploadCloud className="size-4" />
+            </div>
+            <div>
+              <CardTitle>Upload an image</CardTitle>
+              <CardDescription className="mt-1">
+                Select an image file from your device. It will be stored
+                privately in your vault.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <UploadForm isUploading={isUploading} onUpload={handleUpload} />
+        </CardContent>
+      </Card>
 
       {errorMessage && (
         <div
           role="alert"
-          className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+          className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
         >
-          {errorMessage}
+          <AlertCircle className="mt-0.5 size-4 shrink-0" />
+          <span>{errorMessage}</span>
+        </div>
+      )}
+
+      {successMessage && (
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-700 dark:text-emerald-300"
+        >
+          <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
+          <span>{successMessage}</span>
         </div>
       )}
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading your images…</p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2].map((item) => (
+            <div
+              key={item}
+              className="aspect-square animate-pulse rounded-2xl border bg-muted"
+            />
+          ))}
+        </div>
       ) : (
         <ImageGrid
           images={images}
