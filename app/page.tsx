@@ -1,23 +1,13 @@
 import { ArrowRight, Images, LockKeyhole, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
-import { AppHeader } from "@/components/app-header";
+import { LandingHeader } from "@/components/landing-header";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/server";
-import { hasEnvVars } from "@/lib/utils";
 
-export default async function Home() {
-  let isLoggedIn = false;
-
-  if (hasEnvVars) {
-    const supabase = await createClient();
-    const { data } = await supabase.auth.getClaims();
-    isLoggedIn = Boolean(data?.claims);
-  }
-
+export default function Home() {
   return (
     <div className="flex min-h-screen flex-col bg-muted/20">
-      <AppHeader />
+      <LandingHeader />
 
       <main className="flex flex-1 items-center">
         <div className="mx-auto grid w-full max-w-6xl gap-12 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
@@ -37,26 +27,15 @@ export default async function Home() {
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              {isLoggedIn ? (
-                <Button asChild size="lg">
-                  <Link href="/protected">
-                    Open my vault
-                    <ArrowRight />
-                  </Link>
-                </Button>
-              ) : (
-                <>
-                  <Button asChild size="lg">
-                    <Link href="/auth/sign-up">
-                      Create an account
-                      <ArrowRight />
-                    </Link>
-                  </Button>
-                  <Button asChild size="lg" variant="outline">
-                    <Link href="/auth/login">Sign in</Link>
-                  </Button>
-                </>
-              )}
+              <Button asChild size="lg">
+                <Link href="/sign-in">
+                  Sign in
+                  <ArrowRight />
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="outline">
+                <Link href="/protected">Open my vault</Link>
+              </Button>
             </div>
 
             <p className="mt-5 flex items-center gap-2 text-sm text-muted-foreground">
