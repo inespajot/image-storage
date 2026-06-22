@@ -1,109 +1,243 @@
-<a href="https://demo-nextjs-with-supabase.vercel.app/">
-  <img alt="Next.js and Supabase Starter Kit - the fastest way to build apps with Next.js and Supabase" src="https://demo-nextjs-with-supabase.vercel.app/opengraph-image.png">
-  <h1 align="center">Next.js and Supabase Starter Kit</h1>
-</a>
+# Private Image Vault
 
-<p align="center">
- The fastest way to build apps with Next.js and Supabase
-</p>
+A small full-stack image storage web app built with Next.js and Supabase. Users can create accounts, log in, upload images, and view only the images that belong to their own account. The goal is to demonstrate a clean authentication and data-isolation flow, where each user’s uploaded images are kept private from every other user.
 
-<p align="center">
-  <a href="#features"><strong>Features</strong></a> ·
-  <a href="#demo"><strong>Demo</strong></a> ·
-  <a href="#deploy-to-vercel"><strong>Deploy to Vercel</strong></a> ·
-  <a href="#clone-and-run-locally"><strong>Clone and run locally</strong></a> ·
-  <a href="#feedback-and-issues"><strong>Feedback and issues</strong></a>
-  <a href="#more-supabase-examples"><strong>More Examples</strong></a>
-</p>
-<br/>
+## Live Demo
+
+Deployed on Vercel:
+
+```txt
+https://image-storage-delta.vercel.app
+```
 
 ## Features
 
-- Works across the entire [Next.js](https://nextjs.org) stack
-  - App Router
-  - Pages Router
-  - Proxy
-  - Client
-  - Server
-  - It just works!
-- supabase-ssr. A package to configure Supabase Auth to use cookies
-- Password-based authentication block installed via the [Supabase UI Library](https://supabase.com/ui/docs/nextjs/password-based-auth)
-- Styling with [Tailwind CSS](https://tailwindcss.com)
-- Components with [shadcn/ui](https://ui.shadcn.com/)
-- Optional deployment with [Supabase Vercel Integration and Vercel deploy](#deploy-your-own)
-  - Environment variables automatically assigned to Vercel project
+* User sign up and login with Supabase Auth
+* Protected image gallery page for logged-in users
+* Image-only file uploads
+* Private Supabase Storage bucket
+* User-specific file paths using the logged-in user’s ID
+* Metadata stored in a Postgres `images` table
+* Row Level Security policies to isolate users’ data
+* Temporary signed URLs for displaying private images
+* Delete functionality for both the image file and its metadata row
+* Deployed through Vercel from GitHub
 
-## Demo
+## Tech Stack
 
-You can view a fully working demo at [demo-nextjs-with-supabase.vercel.app](https://demo-nextjs-with-supabase.vercel.app/).
+* **Frontend:** Next.js App Router, React, TypeScript, Tailwind CSS
+* **Backend/Auth/Storage:** Supabase
+* **Database:** Supabase Postgres
+* **Deployment:** Vercel
+* **Version Control:** Git and GitHub
 
-## Deploy to Vercel
+## How the App Works
 
-Vercel deployment will guide you through creating a Supabase account and project.
+The app uses Supabase for three main backend services:
 
-After installation of the Supabase integration, all relevant environment variables will be assigned to the project so the deployment is fully functioning.
+1. **Authentication**
+   Users sign up and log in using Supabase Auth. Once logged in, the app can access the current user through Supabase’s session.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&project-name=nextjs-with-supabase&repository-name=nextjs-with-supabase&demo-title=nextjs-with-supabase&demo-description=This+starter+configures+Supabase+Auth+to+use+cookies%2C+making+the+user%27s+session+available+throughout+the+entire+Next.js+app+-+Client+Components%2C+Server+Components%2C+Route+Handlers%2C+Server+Actions+and+Middleware.&demo-url=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2F&external-id=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&demo-image=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2Fopengraph-image.png)
+2. **Database**
+   Each uploaded image has a metadata row in the `public.images` table. This row stores information such as the file path, original file name, file type, file size, and the `owner_id` of the user who uploaded it.
 
-The above will also clone the Starter kit to your GitHub, you can clone that locally and develop locally.
+3. **Storage**
+   The actual image files are stored in a private Supabase Storage bucket called `user-images`.
 
-If you wish to just develop locally and not deploy to Vercel, [follow the steps below](#clone-and-run-locally).
+When a user uploads an image, the app stores it under a path like:
 
-## Clone and run locally
+```txt
+{user.id}/{randomUUID}.{extension}
+```
 
-1. You'll first need a Supabase project which can be made [via the Supabase dashboard](https://database.new)
+For example:
 
-2. Create a Next.js app using the Supabase Starter template npx command
+```txt
+3d9f...a21/image-uuid.png
+```
 
-   ```bash
-   npx create-next-app --example with-supabase with-supabase-app
-   ```
+This means each user’s files are placed inside a folder named after their Supabase user ID.
 
-   ```bash
-   yarn create next-app --example with-supabase with-supabase-app
-   ```
+## Account Isolation
 
-   ```bash
-   pnpm create next-app --example with-supabase with-supabase-app
-   ```
+The key security idea is that account isolation is enforced by Supabase, not just by the frontend.
 
-3. Use `cd` to change into the app's directory
+The app uses two layers of isolation:
 
-   ```bash
-   cd with-supabase-app
-   ```
+### 1. Database Isolation
 
-4. Rename `.env.example` to `.env.local` and update the following:
+The `images` table has an `owner_id` column. Row Level Security ensures that users can only access rows where:
 
-  ```env
-  NEXT_PUBLIC_SUPABASE_URL=[INSERT SUPABASE PROJECT URL]
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=[INSERT SUPABASE PROJECT API PUBLISHABLE OR ANON KEY]
-  ```
-  > [!NOTE]
-  > This example uses `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, which refers to Supabase's new **publishable** key format.
-  > Both legacy **anon** keys and new **publishable** keys can be used with this variable name during the transition period. Supabase's dashboard may show `NEXT_PUBLIC_SUPABASE_ANON_KEY`; its value can be used in this example.
-  > See the [full announcement](https://github.com/orgs/supabase/discussions/29260) for more information.
+```sql
+owner_id = auth.uid()
+```
 
-  Both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` can be found in [your Supabase project's API settings](https://supabase.com/dashboard/project/_?showConnect=true)
+So even if a user tried to manually request another user’s image metadata, Supabase would block it.
 
-5. You can now run the Next.js local development server:
+### 2. Storage Isolation
 
-   ```bash
-   npm run dev
-   ```
+Image files are stored in folders named after the user ID. Supabase Storage policies check that the first folder in the file path matches the logged-in user:
 
-   The starter kit should now be running on [localhost:3000](http://localhost:3000/).
+```sql
+(storage.foldername(name))[1] = auth.uid()::text
+```
 
-6. This template comes with the default shadcn/ui style initialized. If you instead want other ui.shadcn styles, delete `components.json` and [re-install shadcn/ui](https://ui.shadcn.com/docs/installation/next)
+So users can only upload, read, or delete files inside their own folder.
 
-> Check out [the docs for Local Development](https://supabase.com/docs/guides/getting-started/local-development) to also run Supabase locally.
+## Why the Bucket Is Private
 
-## Feedback and issues
+The `user-images` bucket is private. This means uploaded images are not publicly accessible through permanent public URLs.
 
-Please file feedback and issues over on the [Supabase GitHub org](https://github.com/supabase/supabase/issues/new/choose).
+Instead, the app creates temporary signed URLs for the images that belong to the logged-in user. These URLs expire after a short period of time.
 
-## More Supabase examples
+This demonstrates a safer pattern than making all uploaded files public.
 
-- [Next.js Subscription Payments Starter](https://github.com/vercel/nextjs-subscription-payments)
-- [Cookie-based Auth and the Next.js 13 App Router (free course)](https://youtube.com/playlist?list=PL5S4mPUpp4OtMhpnp93EFSo42iQ40XjbF)
-- [Supabase Auth and the Next.js App Router](https://github.com/supabase/supabase/tree/master/examples/auth/nextjs)
+## Database Schema
+
+The main metadata table is:
+
+```sql
+create table public.images (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references auth.users(id) on delete cascade,
+  bucket_id text not null default 'user-images',
+  storage_path text not null,
+  original_name text,
+  content_type text,
+  size_bytes bigint,
+  created_at timestamptz not null default now()
+);
+```
+
+## Supabase Setup
+
+The project uses:
+
+* A private Storage bucket called `user-images`
+* A `public.images` table
+* Row Level Security on `public.images`
+* Storage policies on `storage.objects`
+
+Core policy idea:
+
+```sql
+auth.uid() = owner_id
+```
+
+for database rows, and:
+
+```sql
+(storage.foldername(name))[1] = auth.uid()::text
+```
+
+for stored files.
+
+## Environment Variables
+
+This app requires environment variables to run. Create a `.env.local` file in the project root:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=(contact-me)
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=(contact-me)
+```
+These are also added to Vercel as environment variables for production deployment.
+
+`.env.local` should never be committed GitHub.
+
+## Running Locally
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Run the development server:
+
+```bash
+npm run dev
+```
+
+Open the app locally:
+
+```txt
+http://localhost:3000
+```
+
+## Deployment
+
+The app is deployed through Vercel.
+
+The deployment flow is:
+
+```txt
+Local code changes
+→ Git commit
+→ Push to GitHub
+→ Vercel automatically builds and deploys
+```
+
+The Vercel project uses the same Supabase environment variables as the local app.
+
+Supabase Auth also needs the deployed Vercel URL added to the allowed site and redirect URLs.
+
+## Project Structure
+
+```txt
+app/
+  protected/
+    page.tsx
+    layout.tsx
+
+components/
+  image-gallery/
+    image-gallery.tsx
+    upload-form.tsx
+    image-grid.tsx
+    types.ts
+
+utils/
+  supabase/
+    client.ts
+    server.ts
+    middleware.ts
+```
+
+## Main Files
+
+### `app/protected/page.tsx`
+
+Protected page that renders the image gallery for logged-in users.
+
+### `components/image-gallery/image-gallery.tsx`
+
+Handles the main gallery logic:
+
+* gets the logged-in user
+* loads the current user’s images
+* creates signed URLs
+* uploads images
+* inserts metadata rows
+* deletes images and metadata
+* displays errors
+
+### `components/image-gallery/upload-form.tsx`
+
+Simple upload UI that only accepts image files.
+
+### `components/image-gallery/image-grid.tsx`
+
+Displays private images in a responsive grid and provides delete controls.
+
+### `components/image-gallery/types.ts`
+
+Defines TypeScript types for image metadata and gallery state.
+
+## Security Notes
+
+* No Supabase service-role key is used in the frontend.
+* The app relies on the logged-in user’s Supabase session.
+* The Storage bucket is private.
+* Images are shown through signed URLs.
+* RLS policies enforce user ownership on the backend.
+* Frontend filtering improves user experience, but backend policies provide the actual security.
