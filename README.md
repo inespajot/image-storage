@@ -1,10 +1,8 @@
-# Private Image Vault
+# Private Image Storage App
 
-A small full-stack image storage web app built with Next.js and Supabase. Users can create accounts, log in, upload images, and view only the images that belong to their own account. The goal is to demonstrate a clean authentication and data-isolation flow, where each user’s uploaded images are kept private from every other user.
+A full-stack image storage app built with Next.js and Supabase. Users sign up, log in, and upload images that only they can see — the project is a demonstration of clean authentication and data isolation, where every user's uploads are kept private from everyone else.
 
 ## Live Demo
-
-Deployed on Vercel:
 
 ```txt
 https://image-storage-delta.vercel.app
@@ -12,89 +10,50 @@ https://image-storage-delta.vercel.app
 
 ## Features
 
-* User sign up and login with Supabase Auth
-* Protected image gallery page for logged-in users
-* Image-only file uploads
-* Private Supabase Storage bucket
-* User-specific file paths using the logged-in user’s ID
+* Sign up / login via Supabase Auth
+* Protected gallery page for logged-in users
+* Image-only uploads
+* Private Supabase Storage bucket, scoped per user
 * Metadata stored in a Postgres `images` table
-* Row Level Security policies to isolate users’ data
+* Row Level Security to isolate user data at the database level
 * Temporary signed URLs for displaying private images
-* Delete functionality for both the image file and its metadata row
-* Deployed through Vercel from GitHub
+* Delete support (removes both the file and its metadata row)
+* Deployed via Vercel from GitHub
 
 ## Tech Stack
 
 * **Frontend:** Next.js App Router, React, TypeScript, Tailwind CSS
-* **Backend/Auth/Storage:** Supabase
-* **Database:** Supabase Postgres
+* **Backend/Auth/Storage:** Supabase (Postgres + Auth + Storage)
 * **Deployment:** Vercel
-* **Version Control:** Git and GitHub
 
-## How the App Works
+## How It Works
 
-The app uses Supabase for three main backend services:
-
-1. **Authentication**
-   Users sign up and log in using Supabase Auth. Once logged in, the app can access the current user through Supabase’s session.
-
-2. **Database**
-   Each uploaded image has a metadata row in the `public.images` table. This row stores information such as the file path, original file name, file type, file size, and the `owner_id` of the user who uploaded it.
-
-3. **Storage**
-   The actual image files are stored in a private Supabase Storage bucket called `user-images`.
-
-When a user uploads an image, the app stores it under a path like:
+Supabase handles authentication, the database, and file storage. Once a user logs in, Supabase Auth gives the app access to their session. Every image they upload gets a metadata row in `public.images` — file path, name, type, size, and an `owner_id` linking it back to them — while the actual file goes into a private Storage bucket called `user-images`, saved under a path scoped to their user ID:
 
 ```txt
 {user.id}/{randomUUID}.{extension}
 ```
-
-For example:
-
-```txt
-3d9f...a21/image-uuid.png
-```
-
-This means each user’s files are placed inside a folder named after their Supabase user ID.
+So a real path might look like `3d9f...a21/image-uuid.png`.
 
 ## Account Isolation
 
-The key security idea is that account isolation is enforced by Supabase, not just by the frontend.
+Isolation is enforced by Supabase itself, not just hidden by frontend logic — so even a user poking at the API directly can't reach anyone else's data.
 
-The app uses two layers of isolation:
+**Database:** Row Level Security on `public.images` restricts access to rows where `owner_id = auth.uid()`.
 
-### 1. Database Isolation
-
-The `images` table has an `owner_id` column. Row Level Security ensures that users can only access rows where:
-
-```sql
-owner_id = auth.uid()
-```
-
-So even if a user tried to manually request another user’s image metadata, Supabase would block it.
-
-### 2. Storage Isolation
-
-Image files are stored in folders named after the user ID. Supabase Storage policies check that the first folder in the file path matches the logged-in user:
+**Storage:** a policy on `storage.objects` checks that the first folder in a file's path matches the logged-in user:
 
 ```sql
 (storage.foldername(name))[1] = auth.uid()::text
 ```
 
-So users can only upload, read, or delete files inside their own folder.
+Together, these mean a user can only read, upload to, or delete from their own folder and their own rows — full stop, regardless of what the frontend does or does not show them.
 
 ## Why the Bucket Is Private
 
-The `user-images` bucket is private. This means uploaded images are not publicly accessible through permanent public URLs.
-
-Instead, the app creates temporary signed URLs for the images that belong to the logged-in user. These URLs expire after a short period of time.
-
-This demonstrates a safer pattern than making all uploaded files public.
+`user-images` isn't publicly readable. Instead of permanent public URLs, the app generates short-lived signed URLs for each image when a logged-in user's gallery loads. It's a safer default than making uploaded files public by default, and it means access always flows through an authenticated session.
 
 ## Database Schema
-
-The main metadata table is:
 
 ```sql
 create table public.images (
@@ -109,77 +68,29 @@ create table public.images (
 );
 ```
 
-## Supabase Setup
-
-The project uses:
-
-* A private Storage bucket called `user-images`
-* A `public.images` table
-* Row Level Security on `public.images`
-* Storage policies on `storage.objects`
-
-Core policy idea:
-
-```sql
-auth.uid() = owner_id
-```
-
-for database rows, and:
-
-```sql
-(storage.foldername(name))[1] = auth.uid()::text
-```
-
-for stored files.
-
 ## Environment Variables
 
-This app requires environment variables to run. Create a `.env.local` file in the project root:
+Create a `.env.local` in the project root:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=(contact-me)
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=(contact-me)
 ```
-These are also added to Vercel as environment variables for production deployment.
 
-`.env.local` should never be committed GitHub.
+Add the same variables to Vercel for production. Never commit `.env.local`.
 
 ## Running Locally
 
-Install dependencies:
-
 ```bash
 npm install
-```
-
-Run the development server:
-
-```bash
 npm run dev
 ```
 
-Open the app locally:
-
-```txt
-http://localhost:3000
-```
+Then open `http://localhost:3000`.
 
 ## Deployment
 
-The app is deployed through Vercel.
-
-The deployment flow is:
-
-```txt
-Local code changes
-→ Git commit
-→ Push to GitHub
-→ Vercel automatically builds and deploys
-```
-
-The Vercel project uses the same Supabase environment variables as the local app.
-
-Supabase Auth also needs the deployed Vercel URL added to the allowed site and redirect URLs.
+Pushing to GitHub triggers an automatic build and deploy on Vercel, using the same Supabase environment variables as local dev. Don't forget to add the deployed Vercel URL to Supabase Auth's allowed site and redirect URLs, or login will fail in production.
 
 ## Project Structure
 
@@ -203,41 +114,16 @@ utils/
     middleware.ts
 ```
 
-## Main Files
+**`app/protected/page.tsx`** — the protected gallery page.
 
-### `app/protected/page.tsx`
+**`components/image-gallery/image-gallery.tsx`** — the core logic: fetches the user, loads their images, generates signed URLs, handles uploads/deletes, and surfaces errors.
 
-Protected page that renders the image gallery for logged-in users.
+**`components/image-gallery/upload-form.tsx`** — upload UI, restricted to image files.
 
-### `components/image-gallery/image-gallery.tsx`
+**`components/image-gallery/image-grid.tsx`** — responsive grid with delete controls.
 
-Handles the main gallery logic:
-
-* gets the logged-in user
-* loads the current user’s images
-* creates signed URLs
-* uploads images
-* inserts metadata rows
-* deletes images and metadata
-* displays errors
-
-### `components/image-gallery/upload-form.tsx`
-
-Simple upload UI that only accepts image files.
-
-### `components/image-gallery/image-grid.tsx`
-
-Displays private images in a responsive grid and provides delete controls.
-
-### `components/image-gallery/types.ts`
-
-Defines TypeScript types for image metadata and gallery state.
+**`components/image-gallery/types.ts`** — shared TypeScript types for images and gallery state.
 
 ## Security Notes
 
-* No Supabase service-role key is used in the frontend.
-* The app relies on the logged-in user’s Supabase session.
-* The Storage bucket is private.
-* Images are shown through signed URLs.
-* RLS policies enforce user ownership on the backend.
-* Frontend filtering improves user experience, but backend policies provide the actual security.
+No service-role key ever touches the frontend — everything runs off the user's own Supabase session. The real security boundary is Row Level Security and the storage policies on the backend; the frontend's filtering is just for a smoother UX, not the thing actually keeping data private.
